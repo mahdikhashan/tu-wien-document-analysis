@@ -1,3 +1,15 @@
 data/
 .idea/
 models/
+
+venv/
+step1/
+export/
+
+.ipynb_checkpoints/
+
+*.png
+*.pdf
+*.zip
+
+.DS_Store

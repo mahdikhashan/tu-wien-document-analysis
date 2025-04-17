@@ -10,10 +10,15 @@ mkShell {
     pkgs.python311Packages.jupyterlab
     pkgs.python311Packages.pip
     pkgs.python311Packages.opencv4
+    pkgs.python311Packages.matplotlib
+    pkgs.python311Packages.tqdm
+    pkgs.python311Packages.pandas
+    pkgs.python311Packages.torch
+    pkgs.python311Packages.scikit-learn
+    pkgs.python311Packages.scikit-image
   ];
 
   shellHook = ''
-    python --version
     if [ ! -d "venv" ]; then
        virtualenv venv
     fi
