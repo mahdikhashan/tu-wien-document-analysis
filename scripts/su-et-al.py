@@ -5,9 +5,6 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-from sklearn.metrics import precision_score, recall_score, f1_score
-from skimage.metrics import peak_signal_noise_ratio as psnr
-
 E = 1e-7
 
 parser = argparse.ArgumentParser(description="binarize image using su-et-l method")
