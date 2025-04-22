@@ -24,5 +24,6 @@ mkShell {
     fi
     source venv/bin/activate
     pip install -r scripts/requirements_su-et-al.txt
+    pip install torch torchvision torchaudio
   '';
 }
