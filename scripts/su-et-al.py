@@ -96,7 +96,6 @@ def calculate_threshold(image):
     _, ocimg = cv2.threshold(image, 0, 1, cv2.THRESH_BINARY+cv2.THRESH_OTSU)
     return ocimg
 
-
 def apply_local_thresholding(image, mask, window_size, N_min):
     # TODO(mahdi): document in the report why flooring has been used here
     pad_size = window_size // 2
