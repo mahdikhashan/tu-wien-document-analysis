@@ -7,19 +7,18 @@ from tqdm import tqdm
 import cv2
 import numpy as np
 
-from scipy.ndimage import maximum_filter, minimum_filter
-from skimage.filters import threshold_otsu
 from sklearn.metrics import precision_score, recall_score, f1_score
 from skimage.metrics import peak_signal_noise_ratio as psnr
 
+E = 1e-7
 
 parser = argparse.ArgumentParser(description="binarize image using su-et-l method")
-parser.add_argument("--root-dir", type=str, required=True, help="root like ../")
+parser.add_argument("--root-dir", type=str, default="", help="root like ../")
 parser.add_argument(
-    "--input-dir",
+    "--dataset",
     type=str,
-    required=True,
-    help="root dir, it contains raw dataset"
+    default="data",
+    help="specific dataset path"
 )
 parser.add_argument(
     "--output-dir",
@@ -40,21 +39,13 @@ parser.add_argument(
     help="dir of models"
 )
 parser.add_argument(
-    "--dataset",
-    type=str,
-    default="",
-    help="specific dataset path"
-)
-parser.add_argument(
     "--hw-folder",
     type=str,
-    default="",
     help="handwritten images for test ex. DIBC02009_Test_images-handwritten"
 )
 parser.add_argument(
     "--pr-folder",
     type=str,
-    default="",
     help="printed images for test ex. DIBCO2009_Test_images-printed"
 )
 parser.add_argument(
@@ -65,21 +56,23 @@ parser.add_argument(
 )
 parser.add_argument(
     "--n-min",
-    type=int,
-    default=4,
+    type=float,
+    default=1,
     help="n-min parameter"
 )
 args = parser.parse_args()
 
-input_dir = Path(args.root_dir) / Path(args.input_dir)
-dataset_dir = input_dir / args.dataset
+print(Path.cwd())
+
+root_dir = Path(args.root_dir)
+dataset_dir = root_dir / args.dataset
 image_dir_hw = dataset_dir / args.hw_folder
 image_dir_pr = dataset_dir / args.pr_folder
 output_dir = Path(args.root_dir) / Path(args.output_dir)
 results_dir = Path(args.root_dir) / Path(args.result_dir)
 model_dir = Path(args.root_dir) / Path(args.models_dir)
 
-print(f"input dir: {dataset_dir}")
+print(f"root dir: {root_dir}")
 print(f"handwritten images: {image_dir_hw}")
 print(f"printed images: {image_dir_pr}")
 print(f"output dir: {output_dir}")
@@ -101,36 +94,60 @@ os.makedirs(results_dir, exist_ok=True)
 os.makedirs(output_dir, exist_ok=True)
 os.makedirs(model_dir, exist_ok=True)
 
-# TODO(mahdi): add an invert arg if required, communicate it
-def binarize_su(image, window_size=25, N_min=6):
-    f_max = maximum_filter(image, size=3)
-    f_min = minimum_filter(image, size=3)
+def calculate_image_contrast(image, win_size=3):
+    from scipy.ndimage import maximum_filter, minimum_filter
+    pad_size = win_size // 2
+    padded_image = np.pad(image, pad_size, mode="reflect")
+    f_min = minimum_filter(padded_image, size=win_size)[pad_size:-pad_size, pad_size:-pad_size]
+    f_max = maximum_filter(padded_image, size=win_size)[pad_size:-pad_size, pad_size:-pad_size]
+    contrast_image = (f_max - f_min) / (f_max + f_min + E)
+    # TODO(mahdi): add to the report why this is needed
+    contrast_image_normalized = cv2.normalize(contrast_image, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+    return contrast_image_normalized
 
-    contrast = (f_max - f_min) / (f_max + f_min + 1e-5)
-    # TODO(mahdi): ask colleague why we have a thrshould here from otsu
-    thresh = threshold_otsu(contrast)
-    hc_mask = (contrast >= thresh).astype(np.uint8)
+# TODO(mahdi): what should be the input to the otsu?
+# TODO(mahdi): ask colleague why we have a thrshould here from otsu
+def calculate_threshold(image):
+    from skimage.filters import threshold_otsu
+    otsu_thresh_value = threshold_otsu(image)
+    # print(otsu_thresh_value)
+    return np.where(image > otsu_thresh_value, 0, 1).astype(np.uint8)
 
+def apply_local_thresholding(image, mask, window_size, N_min):
     # TODO(mahdi): document in the report why flooring has been used here
-    pad = window_size // 2
-    I_padded = np.pad(image, pad, mode='reflect')  # pad image
-    H_padded = np.pad(hc_mask, pad, mode='constant')  # pad high contrast mask
-    binarized = np.zeros_like(image)
+    pad_size = window_size // 2
+    I_padded = np.pad(image, pad_size, mode='reflect')  # pad image
+    H_padded = np.pad(mask, pad_size, mode='constant', constant_values=1)  # pad high contrast mask
+    binarized = np.zeros_like(image, dtype=np.uint8)
 
     for i in range(image.shape[0]):
         for j in range(image.shape[1]):
             roi_img = I_padded[i:i+window_size, j:j+window_size]
             roi_mask = H_padded[i:i+window_size, j:j+window_size]
-
-            hc_vals = roi_img[roi_mask == 1]
+            # TODO(mahdi): document why 0 and not 1
+            hc_vals = roi_img[roi_mask == 0]
+            number_of_hc_pixels = len(hc_vals)
+            # print("hc_vals", number_of_hc_pixels)
             # TODO(mahdi): handle forground as well
-            if len(hc_vals) >= N_min:
+            if number_of_hc_pixels >= N_min:
                 mean = hc_vals.mean()
                 std = hc_vals.std()
-                if image[i, j] <= mean + std / 2:
+                local_threshold = mean + std / 2
+                if image[i, j] <= local_threshold:
                     binarized[i, j] = 255
+                else:
+                    binarized[i, j] = 0
+            else:
+                binarized[i, j] = 0
 
     return binarized
+
+# TODO(mahdi): add an invert arg if required, communicate it
+def binarize_su(image, window_size=25, N_min=6):
+    contrast = calculate_image_contrast(image)
+    hc_mask = calculate_threshold(contrast)
+    bin = apply_local_thresholding(image, hc_mask, window_size, N_min)
+    return bin, contrast, hc_mask
 
 if __name__ == "__main__": 
     results_hw = {}
@@ -148,12 +165,11 @@ if __name__ == "__main__":
         )
         for img_path, gt_path in zip(image_paths_pr, gt_paths_pr)
     }
-
-    for _, (name, (img, img_gt)) in enumerate(tqdm(images_hw.items())):
-        bin_img = binarize_su(img, window_size=args.window_size, N_min=args.n_min)
-
-        out_name = name + "_hw_bin_su.tif"
-        cv2.imwrite(os.path.join(output_dir, out_name), bin_img)
+    for _, (name, (img, img_gt)) in enumerate(tqdm((images_pr | images_hw).items())):
+        bin_img, contrast, mask = binarize_su(img, window_size=args.window_size, N_min=args.n_min)
+        cv2.imwrite(os.path.join(output_dir, name + "_hw_bin_su.jpeg"), bin_img)
+        cv2.imwrite(os.path.join(output_dir, name + "_hw_contrast_su.jpeg"), contrast)
+        cv2.imwrite(os.path.join(output_dir, name + "_hw_mask_su.jpeg"), mask)
 
         gt_bin = (img_gt < 128).astype(np.uint8)
         pred_bin = (bin_img > 128).astype(np.uint8)
