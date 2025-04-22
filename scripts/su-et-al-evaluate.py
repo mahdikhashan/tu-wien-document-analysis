@@ -7,7 +7,7 @@ from skimage.metrics import peak_signal_noise_ratio
 from sklearn.metrics import precision_score, recall_score, f1_score
 
 
-def load_and_prepare_image(image_path: Path):
+def load_and_prepare_image(image_path):
     if not image_path.is_file():
         print(f"Error: Image file not found at {image_path}")
         return None
@@ -30,7 +30,7 @@ def load_and_prepare_image(image_path: Path):
     return img.astype(np.uint8)
 
 
-def calculate_metrics(pred_bin: np.ndarray | None, gt_bin: np.ndarray | None):
+def calculate_metrics(pred_bin, gt_bin):
     if pred_bin is None or gt_bin is None:
         return
 
@@ -118,7 +118,6 @@ if __name__ == "__main__":
         }
         results_df = pd.DataFrame(results)
         try:
-            # Ensure output directory exists if path includes directories
             output_csv_path.parent.mkdir(parents=True, exist_ok=True)
             results_df.to_csv(output_csv_path, index=False, mode="w", header=True)
             print(f"Results saved to: {output_csv_path}")
