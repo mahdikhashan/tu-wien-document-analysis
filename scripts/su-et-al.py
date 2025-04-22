@@ -76,6 +76,7 @@ def calculate_threshold(image):
     return ocimg
 
 
+# TODO(mahdi): implement a method with directions instead of padding
 def apply_local_thresholding(image, mask, window_size, N_min):
     # TODO(mahdi): document in the report why flooring has been used here
     pad_size = window_size // 2
