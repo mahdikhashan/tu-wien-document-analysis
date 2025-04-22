@@ -34,22 +34,6 @@ def calculate_metrics(pred_bin: np.ndarray | None, gt_bin: np.ndarray | None):
     if pred_bin is None or gt_bin is None:
         return
 
-    # if pred_bin.shape != gt_bin.shape:
-    #     print(
-    #         f"Warning: Resizing GT shape {gt_bin.shape} to match Pred shape {pred_bin.shape}"
-    #     )
-    #     try:
-    #         gt_bin = cv2.resize(
-    #             gt_bin,
-    #             (pred_bin.shape[1], pred_bin.shape[0]),
-    #             interpolation=cv2.INTER_NEAREST,
-    #         )
-    #         # Ensure resize keeps it binary
-    #         gt_bin = np.where(gt_bin > 127, 255, 0).astype(np.uint8)
-    #     except Exception as e:
-    #         print(f"Error during resizing: {e}")
-    #         return None, None, None, None
-
     try:
         pred_flat_01 = (pred_bin.flatten() / 255).astype(np.uint8)
         gt_flat_01 = (gt_bin.flatten() / 255).astype(np.uint8)
