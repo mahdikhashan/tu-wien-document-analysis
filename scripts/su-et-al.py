@@ -62,9 +62,9 @@ print(f"window size: {args.window_size}, N_min: {args.n_min}")
 
 directions = [
     lambda x: np.roll(x, -1, axis=0),
-    lambda x: np.roll(np.roll(x, 1, axis=1), -1, axis=0),
+    lambda x: np.roll(x, 1, axis=0),
+    lambda x: np.roll(x, -1, axis=1),
     lambda x: np.roll(x, 1, axis=1),
-    lambda x: np.roll(np.roll(x, 1, axis=1), 1, axis=0),
 ]
 
 
