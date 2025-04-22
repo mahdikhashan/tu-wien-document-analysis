@@ -92,8 +92,6 @@ def calculate_image_contrast(image):
 
 # TODO(mahdi): what should be the input to the otsu?
 # TODO(mahdi): ask colleague why we have a thrshould here from otsu
-
-
 def calculate_threshold(image):
     _, ocimg = cv2.threshold(image, 0, 1, cv2.THRESH_BINARY+cv2.THRESH_OTSU)
     return ocimg
@@ -129,8 +127,6 @@ def apply_local_thresholding(image, mask, window_size, N_min):
     return binarized
 
 # TODO(mahdi): add an invert arg if required, communicate it
-
-
 def binarize_su(image, window_size=3, N_min=9):
     contrast = calculate_image_contrast(image)
     hc_mask = calculate_threshold(contrast)
