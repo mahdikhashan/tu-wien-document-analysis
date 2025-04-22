@@ -7,7 +7,8 @@ import numpy as np
 
 E = 1e-7
 
-parser = argparse.ArgumentParser(description="binarize image using su-et-l method")
+parser = argparse.ArgumentParser(
+    description="binarize image using su-et-l method")
 parser.add_argument("--root-dir", type=str, default="", help="root like ../")
 parser.add_argument(
     "--dataset",
@@ -60,16 +61,18 @@ print(f"output dir: {output_dir}")
 print(f"window size: {args.window_size}, N_min: {args.n_min}")
 
 directions = [
-    lambda x: np.roll(x, -1, axis=0),                        
-    lambda x: np.roll(np.roll(x, 1, axis=1), -1, axis=0),    
-    lambda x: np.roll(x, 1, axis=1),                         
-    lambda x: np.roll(np.roll(x, 1, axis=1), 1, axis=0),     
+    lambda x: np.roll(x, -1, axis=0),
+    lambda x: np.roll(np.roll(x, 1, axis=1), -1, axis=0),
+    lambda x: np.roll(x, 1, axis=1),
+    lambda x: np.roll(np.roll(x, 1, axis=1), 1, axis=0),
 ]
+
 
 def calculate_image_contrast(image):
     img_float = image.astype(np.float64)
     local_min = img_float.copy()
     local_max = img_float.copy()
+
     for roll_fn in directions:
         rolled = roll_fn(img_float)
         local_min = np.minimum(local_min, rolled)
@@ -83,14 +86,18 @@ def calculate_image_contrast(image):
         where=denominator > E
     )
     raw_contrast = np.nan_to_num(raw_contrast, nan=0.0, posinf=0.0, neginf=0.0)
-    contrast_image_normalized = cv2.normalize(raw_contrast, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+    contrast_image_normalized = cv2.normalize(
+        raw_contrast, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
     return contrast_image_normalized
 
 # TODO(mahdi): what should be the input to the otsu?
 # TODO(mahdi): ask colleague why we have a thrshould here from otsu
+
+
 def calculate_threshold(image):
     _, ocimg = cv2.threshold(image, 0, 1, cv2.THRESH_BINARY+cv2.THRESH_OTSU)
     return ocimg
+
 
 def apply_local_thresholding(image, mask, window_size, N_min):
     # TODO(mahdi): document in the report why flooring has been used here
@@ -122,23 +129,28 @@ def apply_local_thresholding(image, mask, window_size, N_min):
     return binarized
 
 # TODO(mahdi): add an invert arg if required, communicate it
+
+
 def binarize_su(image, window_size=3, N_min=9):
     contrast = calculate_image_contrast(image)
     hc_mask = calculate_threshold(contrast)
     bin = apply_local_thresholding(image, hc_mask, window_size, N_min)
     return bin, contrast, hc_mask
 
-if __name__ == "__main__": 
+
+if __name__ == "__main__":
     img = cv2.imread(args.image)
     g = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     I = g.astype(np.float64) / 255.0
+
     if DEBUG:
         cv2.imshow("I", g)
         cv2.waitKey(0)
         cv2.destroyAllWindows()
 
-    bin, contrast, mask = binarize_su(I, window_size=args.window_size, N_min=args.n_min)
+    bin, contrast, mask = binarize_su(
+        I, window_size=args.window_size, N_min=args.n_min)
     cv2.imwrite(os.path.join(output_dir, "0010_pr_bin_su.jpeg"), bin)
-    # TODO(mahdi): masks are always black
+    # TODO(mahdi): masks are always black, why
     # cv2.imwrite(os.path.join(output_dir, "0003_hw_mask_su.jpeg"), mask)
     cv2.imwrite(os.path.join(output_dir, "0010_pr_contrast_su.jpeg"), contrast)
