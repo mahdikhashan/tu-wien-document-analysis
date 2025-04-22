@@ -7,44 +7,20 @@ import numpy as np
 
 E = 1e-7
 
-parser = argparse.ArgumentParser(
-    description="binarize image using su-et-l method")
+parser = argparse.ArgumentParser(description="binarize image using su-et-l method")
 parser.add_argument("--root-dir", type=str, default="", help="root like ../")
-parser.add_argument(
-    "--dataset",
-    type=str,
-    default="data",
-    help="specific dataset path"
-)
+parser.add_argument("--dataset", type=str, default="data", help="specific dataset path")
 parser.add_argument(
     "--output-dir",
     type=str,
     default="data/processed",
-    help="dir of saved processed image"
+    help="dir of saved processed image",
 )
-parser.add_argument(
-    "--image",
-    type=str,
-    required=True,
-    help="raw image"
-)
-parser.add_argument(
-    "--window-size",
-    type=int,
-    default=20,
-    help="window size"
-)
-parser.add_argument(
-    "--n-min",
-    type=float,
-    default=1,
-    help="n-min parameter"
-)
-parser.add_argument(
-    "--debug",
-    type=bool,
-    default=False
-)
+parser.add_argument("--image", type=str, required=True, help="raw image")
+parser.add_argument("--image-output", type=str, required=True, help="output image name")
+parser.add_argument("--window-size", type=int, default=20, help="window size")
+parser.add_argument("--n-min", type=float, default=1, help="n-min parameter")
+parser.add_argument("--debug", type=bool, default=False)
 args = parser.parse_args()
 
 print(Path.cwd())
@@ -54,6 +30,7 @@ root_dir = Path(args.root_dir)
 dataset_dir = root_dir / args.dataset
 output_dir = Path(args.root_dir) / Path(args.output_dir)
 img_path = Path(args.image)
+output_name = args.image_output
 
 print(f"root dir: {root_dir}")
 print(f"image: {img_path}")
@@ -83,30 +60,33 @@ def calculate_image_contrast(image):
         (local_max - local_min),
         denominator,
         out=np.zeros_like(local_max, dtype=np.float64),
-        where=denominator > E
+        where=denominator > E,
     )
     raw_contrast = np.nan_to_num(raw_contrast, nan=0.0, posinf=0.0, neginf=0.0)
     contrast_image_normalized = cv2.normalize(
-        raw_contrast, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+        raw_contrast, None, 0, 255, cv2.NORM_MINMAX
+    ).astype(np.uint8)
     return contrast_image_normalized
+
 
 # TODO(mahdi): what should be the input to the otsu?
 # TODO(mahdi): ask colleague why we have a thrshould here from otsu
 def calculate_threshold(image):
-    _, ocimg = cv2.threshold(image, 0, 1, cv2.THRESH_BINARY+cv2.THRESH_OTSU)
+    _, ocimg = cv2.threshold(image, 0, 1, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
     return ocimg
+
 
 def apply_local_thresholding(image, mask, window_size, N_min):
     # TODO(mahdi): document in the report why flooring has been used here
     pad_size = window_size // 2
-    I_padded = np.pad(image, pad_size, mode='reflect')
-    H_padded = np.pad(mask, pad_size, mode='constant', constant_values=1)
+    I_padded = np.pad(image, pad_size, mode="reflect")
+    H_padded = np.pad(mask, pad_size, mode="constant", constant_values=1)
     binarized = np.zeros_like(image, dtype=np.uint8)
 
     for i in range(image.shape[0]):
         for j in range(image.shape[1]):
-            roi_img = I_padded[i:i+window_size, j:j+window_size]
-            roi_mask = H_padded[i:i+window_size, j:j+window_size]
+            roi_img = I_padded[i : i + window_size, j : j + window_size]
+            roi_mask = H_padded[i : i + window_size, j : j + window_size]
             # TODO(mahdi): document why 0 and not 1
             # *** this changed the results ***
             hc_vals = roi_img[roi_mask == 1]
@@ -124,6 +104,7 @@ def apply_local_thresholding(image, mask, window_size, N_min):
                 binarized[i, j] = 0
 
     return binarized
+
 
 # TODO(mahdi): add an invert arg if required, communicate it
 def binarize_su(image, window_size=3, N_min=9):
@@ -143,9 +124,8 @@ if __name__ == "__main__":
         cv2.waitKey(0)
         cv2.destroyAllWindows()
 
-    bin, contrast, mask = binarize_su(
-        I, window_size=args.window_size, N_min=args.n_min)
-    cv2.imwrite(os.path.join(output_dir, "0010_pr_bin_su.jpeg"), bin)
+    bin, contrast, mask = binarize_su(I, window_size=args.window_size, N_min=args.n_min)
+    cv2.imwrite(os.path.join(output_dir, output_name + "_bin" + ".jpeg"), bin)
     # TODO(mahdi): masks are always black, why
     # cv2.imwrite(os.path.join(output_dir, "0003_hw_mask_su.jpeg"), mask)
-    cv2.imwrite(os.path.join(output_dir, "0010_pr_contrast_su.jpeg"), contrast)
+    cv2.imwrite(os.path.join(output_dir, output_name + "_mask" + ".jpeg"), contrast)
